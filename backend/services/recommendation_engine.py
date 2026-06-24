@@ -90,8 +90,8 @@ def get_recommendations(
     """
     # Step 1 — Symptom classification
     classification = calculate_priority(message)
-    department = classification["department"]
-    severity = classification["severity"]
+    department = str(classification["department"])
+    severity = str(classification["severity"])
 
     # Step 2 — Retrieve all hospitals from DB
     db = SessionLocal()

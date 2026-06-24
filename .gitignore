@@ -4,3 +4,8 @@ node_modules/
 dist/
 __pycache__/
 .env
+.env.local
+.env.*
+!.env.example
+*.db
+*.csv
