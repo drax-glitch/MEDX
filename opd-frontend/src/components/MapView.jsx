@@ -35,6 +35,10 @@ function MapView({ selectedHospital, hospitalsList = [] }) {
     ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
     : `https://www.google.com/maps`;
 
+  const handleOpenMap = () => {
+    alert("Live navigation will be available once the backend and Google Maps API are connected.");
+  };
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 2 }}>
       {/* Header */}
@@ -50,8 +54,7 @@ function MapView({ selectedHospital, hospitalsList = [] }) {
         <Button
           variant="contained"
           size="small"
-          href={googleMapsUrl}
-          target="_blank"
+          onClick={handleOpenMap}
           sx={{
             bgcolor: '#14b8a6',
             color: 'white',
@@ -118,8 +121,7 @@ function MapView({ selectedHospital, hospitalsList = [] }) {
             <Button
               variant="contained"
               size="small"
-              href={googleMapsUrl}
-              target="_blank"
+              onClick={handleOpenMap}
               sx={{
                 bgcolor: '#14b8a6',
                 color: 'white',

@@ -3,7 +3,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { 
   Box, Typography, Button, Grid, Card, CardContent, 
-  InputBase, IconButton, Chip, Divider 
+  InputBase, IconButton, Chip, Divider, Dialog, DialogTitle, DialogContent, DialogActions 
 } from '@mui/material';
 
 // Custom MEDX slate/teal Dark Theme
@@ -41,6 +41,7 @@ function App() {
   const [isTyping, setIsTyping] = useState(false);
   const [activeStep, setActiveStep] = useState(0); // 0: greeting, 1: symptom received, 2: severity received
   const [selectedHospitalId, setSelectedHospitalId] = useState(1); // 1: AIIMS, 2: Apollo, 3: Kalinga
+  const [isNavModalOpen, setIsNavModalOpen] = useState(false);
 
   const messagesEndRef = useRef(null);
 
@@ -399,8 +400,7 @@ function App() {
                             <Button 
                               variant="outlined" 
                               size="small" 
-                              href={`https://www.google.com/maps/dir/?api=1&destination=${activeHospital.name}`}
-                              target="_blank"
+                              onClick={() => setIsNavModalOpen(true)}
                               sx={{ borderColor: '#334155', color: '#f1f2f6', textTransform: 'none', px: 2, py: 0.5 }}
                             >
                               Open Maps
@@ -533,10 +533,42 @@ function App() {
                 ↑
               </IconButton>
             </Box>
+            </Box>
           </Box>
         </Box>
-      </Box>
-    </ThemeProvider>
+
+        {/* Dynamic Presentation Navigation Modal */}
+        <Dialog 
+          open={isNavModalOpen} 
+          onClose={() => setIsNavModalOpen(false)}
+          PaperProps={{
+            sx: {
+              bgcolor: '#0e111a',
+              border: '1px solid #1e293b',
+              borderRadius: '16px',
+              p: 2
+            }
+          }}
+        >
+          <DialogTitle sx={{ fontWeight: '800', color: '#f59e0b', pb: 1 }}>
+            🚧 Navigation Module
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" sx={{ color: '#94a3b8', lineHeight: 1.6 }}>
+              Google Maps integration is under development. Live route navigation will be fully enabled after backend API integration.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button 
+              variant="contained" 
+              onClick={() => setIsNavModalOpen(false)}
+              sx={{ bgcolor: '#14b8a6', color: 'white', '&:hover': { bgcolor: '#0d9488' } }}
+            >
+              OK
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </ThemeProvider>
   );
 }
 
