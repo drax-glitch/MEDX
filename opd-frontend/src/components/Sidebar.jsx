@@ -15,7 +15,7 @@ function Sidebar({ onNewConsultation, currentTab, setCurrentTab }) {
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
         {/* Brand Header */}
         <Box sx={{ display: 'flex', flexDirection: 'column', pb: 1 }}>
-          <Typography variant="h5" sx={{ fontWeight: '800', display: 'flex', alignItems: 'center', gap: 1, color: '#14b8a6' }}>
+          <Typography variant="h5" sx={{ fontWeight: '800', display: 'flex', alignItems: 'center', gap: 1, color: '#14b8a6' }} className="glow-logo">
             🩺 MEDX
           </Typography>
           <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: '700', fontSize: '11px', mt: 0.5 }}>
@@ -59,7 +59,8 @@ function Sidebar({ onNewConsultation, currentTab, setCurrentTab }) {
                     disabled={item.disabled}
                     onClick={() => setCurrentTab(item.tab)}
                     sx={{
-                      borderRadius: '8px',
+                      borderRadius: isSelected ? '0px 8px 8px 0px' : '8px',
+                      borderLeft: isSelected ? '3px solid #14b8a6' : '3px solid transparent',
                       py: 1,
                       px: 1.5,
                       '&.Mui-selected': { 

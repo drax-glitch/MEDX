@@ -7,15 +7,15 @@ import HospitalResults from './pages/HospitalResults';
 import Booking from './pages/Booking';
 import { Box, Typography, Button, Grid, Card, CardContent } from '@mui/material';
 
-// Custom MEDX slate/teal Theme
+// Custom MEDX slate/teal Theme (Premium Dark Mode)
 const theme = createTheme({
   palette: {
-    mode: 'light',
+    mode: 'dark',
     primary: {
-      main: '#0f172a', // slate-900
+      main: '#14b8a6', // teal-500
     },
     secondary: {
-      main: '#14b8a6', // teal-500
+      main: '#0a0c14', // dark-900
     },
     success: {
       main: '#22c55e', // green-500
@@ -24,8 +24,12 @@ const theme = createTheme({
       main: '#ef4444', // red-500
     },
     background: {
-      default: '#f8fafc',
-      paper: '#ffffff',
+      default: '#0a0c14',
+      paper: '#0e111a',
+    },
+    text: {
+      primary: '#f1f2f6',
+      secondary: '#94a3b8',
     },
   },
   typography: {
@@ -44,18 +48,25 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: '12px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.02)',
+          boxShadow: 'none',
+          border: '1px solid #1e293b',
         },
       },
     },
   },
 });
 
+
 function App() {
   const [currentTab, setCurrentTab] = useState('home');
   const [symptoms, setSymptoms] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [selectedBookingHospital, setSelectedBookingHospital] = useState(null);
+
+  const [showHospitals, setShowHospitals] = useState(false);
+  const [hospitalsList, setHospitalsList] = useState([]);
+  const [selectedHospital, setSelectedHospital] = useState(null);
+  const [activeSymptom, setActiveSymptom] = useState('');
 
   const initialMessage = {
     sender: 'assistant',
@@ -72,29 +83,127 @@ function App() {
 
     // Simulated medical triage processing delay
     setTimeout(() => {
-      setSymptoms((prev) => [...prev, symptom]);
-      let reply = `Got it. I have logged "${symptom}" into your pre-admission assessment profile.`;
-      
-      const isEmergency = ['Chest Pain', 'Breathing Issue', 'Accident', 'Head Injury'].includes(symptom);
-      if (isEmergency) {
-        reply += ` This matches high-severity emergency guidelines. I have prioritized trauma facility matching. Please view results to pre-register.`;
-      } else {
-        reply += ` This matches moderate urgent care guidelines. You can continue adding symptoms or proceed to match standard outpatient wards.`;
-      }
-
+      setActiveSymptom(symptom);
+      let reply = `Got it — ${symptom}. How severe is it?`;
       setMessages((prev) => [...prev, { sender: 'assistant', text: reply }]);
       setIsTyping(false);
-    }, 1200);
+    }, 1000);
   };
 
-  const handleAddUserTextMessage = (text) => {
+  const handleAddUserTextMessage = async (text) => {
     // Append user input text bubble
     setMessages((prev) => [...prev, { sender: 'user', text: text }]);
     setIsTyping(true);
 
+    const cleanText = text.trim();
+
+    // Check if we are waiting for a severity response
+    if (activeSymptom && ['severe', 'moderate', 'mild', 'high', 'medium', 'low'].includes(cleanText.toLowerCase())) {
+      const severityInput = cleanText;
+      
+      setTimeout(async () => {
+        let fetchedHospitals = [];
+        const isSevere = ['severe', 'high'].includes(severityInput.toLowerCase());
+        const isMild = ['mild', 'low'].includes(severityInput.toLowerCase());
+
+        try {
+          // Call real backend endpoint
+          const backendUrl = `http://localhost:8000/recommend?message=${encodeURIComponent(activeSymptom)}&lat=20.2800&lng=85.8000`;
+          const response = await fetch(backendUrl, { method: 'POST' });
+          if (response.ok) {
+            const data = await response.json();
+            fetchedHospitals = data.recommendations || [];
+          }
+        } catch (e) {
+          console.log("Backend offline, falling back to mock recommendations", e);
+        }
+
+        // Fallback mock hospitals if backend call failed or was offline
+        if (fetchedHospitals.length === 0) {
+          fetchedHospitals = [
+            {
+              hospital_id: 1,
+              name: 'AIIMS Bhubaneswar',
+              hospital_name: 'AIIMS Bhubaneswar',
+              distance_km: 4.2,
+              distance: '4.2 km',
+              travel_time_min: 12,
+              duration: '12 mins',
+              beds: 15,
+              specialty: 'Trauma & Cardiac Care (Level 1)',
+              coordinate: { lat: 20.2510, lng: 85.7766 }
+            },
+            {
+              hospital_id: 2,
+              name: 'Apollo Hospitals',
+              hospital_name: 'Apollo Hospitals',
+              distance_km: 5.8,
+              distance: '5.8 km',
+              travel_time_min: 15,
+              duration: '15 mins',
+              beds: 10,
+              specialty: 'Multispecialty & General ER',
+              coordinate: { lat: 20.3090, lng: 85.8327 }
+            },
+            {
+              hospital_id: 3,
+              name: 'Kalinga Hospital',
+              hospital_name: 'Kalinga Hospital',
+              distance_km: 6.2,
+              distance: '6.2 km',
+              travel_time_min: 16,
+              duration: '16 mins',
+              beds: 3,
+              specialty: 'Pediatrics & Orthopedic Emergencies',
+              coordinate: { lat: 20.3228, lng: 85.8160 }
+            }
+          ];
+        }
+
+        // Add user symptom
+        setSymptoms((prev) => {
+          if (prev.includes(activeSymptom)) return prev;
+          return [...prev, activeSymptom];
+        });
+
+        // 1. Add Alert response
+        if (isSevere) {
+          setMessages((prev) => [...prev, {
+            sender: 'assistant',
+            text: `🚨 Critical Severity Detected\nThis sounds urgent. Sharing nearest hospitals now.`
+          }]);
+        } else if (isMild) {
+          setMessages((prev) => [...prev, {
+            sender: 'assistant',
+            text: `🟢 Mild Severity Detected\nSharing outpatient clinics near you.`
+          }]);
+        } else {
+          setMessages((prev) => [...prev, {
+            sender: 'assistant',
+            text: `⚠️ Moderate Severity Detected\nSharing urgent care centers near you.`
+          }]);
+        }
+
+        // 2. Add Hospitals List header response
+        setTimeout(() => {
+          setMessages((prev) => [...prev, {
+            sender: 'assistant',
+            text: `Top hospitals near Bhubaneswar for you:`
+          }]);
+          
+          setHospitalsList(fetchedHospitals);
+          setSelectedHospital(fetchedHospitals[0]);
+          setShowHospitals(true);
+          setIsTyping(false);
+        }, 800);
+
+      }, 1000);
+      return;
+    }
+
     setTimeout(() => {
       // Natural language keyword matching
-      const lower = text.toLowerCase();
+      const lower = cleanText.toLowerCase();
       let matched = null;
 
       if (lower.includes('chest') || lower.includes('pain') || lower.includes('heart')) {
@@ -111,24 +220,23 @@ function App() {
         matched = 'Pregnancy';
       }
 
-      let reply = '';
       if (matched) {
-        if (!symptoms.includes(matched)) {
-          setSymptoms((prev) => [...prev, matched]);
-        }
-        reply = `Based on your description, I have flagged and logged "${matched}" under your active symptom profile. I have recalculated your MEDX AI priority score. Please proceed to match recommended hospitals.`;
+        setActiveSymptom(matched);
+        setMessages((prev) => [...prev, { sender: 'assistant', text: `Got it — ${matched}. How severe is it?` }]);
       } else {
-        reply = `I have received and recorded your symptom logs: "${text}". Please select one of the Quick Triage Starter cards or provide further details so I can determine severity.`;
+        setMessages((prev) => [...prev, { sender: 'assistant', text: `I have received and recorded your symptom logs: "${cleanText}". Please select one of the Quick Triage Starter cards or provide further details so I can determine severity.` }]);
       }
-
-      setMessages((prev) => [...prev, { sender: 'assistant', text: reply }]);
       setIsTyping(false);
-    }, 1200);
+    }, 1000);
   };
 
   const handleNewConsultation = () => {
     setSymptoms([]);
     setMessages([initialMessage]);
+    setShowHospitals(false);
+    setHospitalsList([]);
+    setSelectedHospital(null);
+    setActiveSymptom('');
     setCurrentTab('consultation');
   };
 
@@ -158,11 +266,11 @@ function App() {
             justifyContent: 'space-between',
             alignItems: 'center',
             padding: '16px 24px',
-            borderBottom: '1px solid #e2e8f0',
-            backgroundColor: '#ffffff',
+            borderBottom: '1px solid #1e293b',
+            backgroundColor: '#0e111a',
             flexShrink: 0
           }}>
-            <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#64748b' }}>
+            <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#94a3b8' }}>
               {currentTab === 'home' && '🏠 Home Dashboard'}
               {currentTab === 'consultation' && '💬 Consultation Workspace'}
               {currentTab === 'results' && '🏥 Hospital Recommendations'}
@@ -171,9 +279,9 @@ function App() {
             
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
               <span style={{ cursor: 'pointer', fontSize: '18px' }} title="Notifications">🔔</span>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: '#f1f5f9', p: '6px 14px', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: '#1e293b', p: '6px 14px', borderRadius: 10, border: '1px solid #334155' }}>
                 <span style={{ fontSize: '15px' }}>👤</span>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#f1f2f6' }}>
                   Debasis
                 </Typography>
               </Box>
@@ -187,10 +295,10 @@ function App() {
               <Box sx={{ p: 4, display: 'flex', flexDirection: 'column', gap: 4, height: '100%', overflowY: 'auto' }}>
                 {/* Greeting */}
                 <Box>
-                  <Typography variant="h4" sx={{ fontWeight: '800', color: '#0f172a', mb: 1 }}>
+                  <Typography variant="h4" sx={{ fontWeight: '800', color: '#f1f2f6', mb: 1 }}>
                     👋 Welcome back, Debasis
                   </Typography>
-                  <Typography variant="body1" color="text.secondary">
+                  <Typography variant="body1" sx={{ color: '#94a3b8' }}>
                     Access real-time care routing network and clinical triage referrals.
                   </Typography>
                 </Box>
@@ -198,45 +306,45 @@ function App() {
                 {/* Dashboard Stats */}
                 <Grid container spacing={3}>
                   <Grid item xs={12} sm={4}>
-                    <Card sx={{ border: '1px solid #e2e8f0', boxShadow: 'none' }}>
+                    <Card sx={{ border: '1px solid #1e293b', bgcolor: '#0e111a' }}>
                       <CardContent sx={{ p: 3 }}>
                         <Typography variant="h3" sx={{ fontWeight: '900', color: '#14b8a6', mb: 1 }}>
                           24/7
                         </Typography>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#f1f2f6' }}>
                           Care Match Network
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" sx={{ color: '#94a3b8' }}>
                           Live hospital ER beds & wait time tracking active
                         </Typography>
                       </CardContent>
                     </Card>
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <Card sx={{ border: '1px solid #e2e8f0', boxShadow: 'none' }}>
+                    <Card sx={{ border: '1px solid #1e293b', bgcolor: '#0e111a' }}>
                       <CardContent sx={{ p: 3 }}>
                         <Typography variant="h3" sx={{ fontWeight: '900', color: '#22c55e', mb: 1 }}>
                           0
                         </Typography>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#f1f2f6' }}>
                           Active Registrations
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" sx={{ color: '#94a3b8' }}>
                           No pending ticket queues found on this profile
                         </Typography>
                       </CardContent>
                     </Card>
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <Card sx={{ border: '1px solid #e2e8f0', boxShadow: 'none' }}>
+                    <Card sx={{ border: '1px solid #1e293b', bgcolor: '#0e111a' }}>
                       <CardContent sx={{ p: 3 }}>
-                        <Typography variant="h3" sx={{ fontWeight: '900', color: '#64748b', mb: 1 }}>
+                        <Typography variant="h3" sx={{ fontWeight: '900', color: '#94a3b8', mb: 1 }}>
                           0
                         </Typography>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#f1f2f6' }}>
                           Prior Consultations
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" sx={{ color: '#94a3b8' }}>
                           Initiate a conversation to record diagnosis history
                         </Typography>
                       </CardContent>
@@ -245,11 +353,11 @@ function App() {
                 </Grid>
 
                 {/* Start consultation CTA */}
-                <Box sx={{ mt: 2, p: 4, border: '1px dashed #cbd5e1', borderRadius: 4, bgcolor: '#ffffff', textAlign: 'center' }}>
-                  <Typography variant="h6" sx={{ fontWeight: '800', color: '#0f172a', mb: 1 }}>
+                <Box sx={{ mt: 2, p: 4, border: '1px dashed #334155', borderRadius: 4, bgcolor: '#0e111a', textAlign: 'center' }}>
+                  <Typography variant="h6" sx={{ fontWeight: '800', color: '#f1f2f6', mb: 1 }}>
                     Need medical priority check-in matching?
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  <Typography variant="body2" sx={{ color: '#94a3b8', mb: 3 }}>
                     Describe symptoms to our AI agent to secure priority queues at AIIMS, Apollo, or Kalinga hospitals.
                   </Typography>
                   <Button
@@ -258,6 +366,7 @@ function App() {
                     onClick={handleNewConsultation}
                     sx={{
                       bgcolor: '#14b8a6',
+                      color: 'white',
                       fontWeight: 'bold',
                       px: 4,
                       py: 1.5,
@@ -271,6 +380,7 @@ function App() {
               </Box>
             )}
 
+
             {currentTab === 'consultation' && (
               <Consultation
                 messages={messages}
@@ -279,6 +389,10 @@ function App() {
                 onFinishConsultation={() => setCurrentTab('results')}
                 onAddUserTextMessage={handleAddUserTextMessage}
                 isTyping={isTyping}
+                showHospitals={showHospitals}
+                hospitalsList={hospitalsList}
+                selectedHospital={selectedHospital}
+                onSelectHospital={setSelectedHospital}
               />
             )}
 
