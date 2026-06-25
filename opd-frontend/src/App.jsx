@@ -365,12 +365,7 @@ function App() {
                 }}
               />
             )}
-            <IconButton href="tel:108" sx={{ color: '#94a3b8' }} title="Call 108">
-              <MdPhone size={20} />
-            </IconButton>
-            <IconButton onClick={handleNewChat} sx={{ color: '#94a3b8' }} title="New chat">
-              <MdMoreVert size={20} />
-            </IconButton>
+
           </Box>
         </Box>
 
@@ -617,7 +612,7 @@ function App() {
 
             {/* Input bar */}
             <Box className="chat-input-bar">
-              <MdAttachFile size={20} style={{ opacity: 0.5, cursor: 'pointer', flexShrink: 0 }} />
+
               <InputBase
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
@@ -627,7 +622,7 @@ function App() {
                 disabled={isTyping}
                 sx={{ fontSize: '14.5px', py: 0.5, color: '#f1f2f6' }}
               />
-              <MdMic size={20} style={{ opacity: 0.5, cursor: 'pointer', flexShrink: 0 }} />
+
               <IconButton
                 onClick={handleSend}
                 disabled={!inputText.trim() || isTyping}
