@@ -1,482 +1,594 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { 
-  Box, Typography, Button, Grid, Card, CardContent, 
-  InputBase, IconButton, Chip, Divider, Dialog, DialogTitle, DialogContent, DialogActions 
+import {
+  Box, Typography, Button, Card, CardContent,
+  InputBase, IconButton, Chip, Divider, CircularProgress
 } from '@mui/material';
 
-// Custom MEDX slate/teal Dark Theme
+// React Icons — Lucide set via react-icons
+import {
+  MdLocalHospital,
+  MdLocationOn,
+  MdPhone,
+  MdSend,
+  MdAttachFile,
+  MdMic,
+  MdMoreVert,
+  MdCheckCircle,
+  MdWarning,
+  MdFavorite,
+  MdAccessTime,
+  MdDirectionsCar,
+  MdOpenInNew,
+  MdPerson,
+  MdMedicalServices,
+  MdEmergency,
+  MdThermostat,
+  MdAdd,
+  MdHotel,
+  MdStar,
+} from 'react-icons/md';
+import { FaAmbulance, FaHeartbeat, FaUserMd, FaBed, FaRoute } from 'react-icons/fa';
+import { TbStethoscope } from 'react-icons/tb';
+import { LuBrain, LuActivity, LuZap } from 'react-icons/lu';
+
+// Leaflet map
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix leaflet default marker icons (webpack/vite asset issue)
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+// Custom hospital marker (teal)
+const hospitalIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+// ---------------------------------------------------------------------------
+// MUI Dark Theme
+// ---------------------------------------------------------------------------
 const theme = createTheme({
   palette: {
     mode: 'dark',
-    primary: {
-      main: '#14b8a6', // Teal
-    },
-    background: {
-      default: '#0a0c14',
-      paper: '#0e111a',
-    },
-    text: {
-      primary: '#f1f2f6',
-      secondary: '#94a3b8',
-    },
+    primary: { main: '#14b8a6' },
+    background: { default: '#0a0c14', paper: '#0e111a' },
+    text: { primary: '#f1f2f6', secondary: '#94a3b8' },
   },
-  typography: {
-    fontFamily: 'Inter, Arial, sans-serif',
-  },
+  typography: { fontFamily: 'Inter, Arial, sans-serif' },
 });
 
-function App() {
-  const initialMessages = [
-    {
-      sender: 'assistant',
-      text: "Hi! I'm MEDX. Describe what's happening and I'll help you get the right care immediately.",
-      time: '09:41 AM'
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function now() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function getSeverityColor(severity) {
+  if (!severity) return '#94a3b8';
+  const s = severity.toLowerCase();
+  if (s === 'critical') return '#ef4444';
+  if (s === 'moderate') return '#f59e0b';
+  return '#22c55e';
+}
+
+// Leaflet helper: fly to bounds when route changes
+function MapFlyTo({ positions }) {
+  const map = useMap();
+  useEffect(() => {
+    if (positions && positions.length >= 2) {
+      const bounds = L.latLngBounds(positions);
+      map.fitBounds(bounds, { padding: [40, 40] });
     }
+  }, [positions, map]);
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Leaflet Route Map component
+// ---------------------------------------------------------------------------
+function RouteMap({ userLocation, hospital }) {
+  const userPos = userLocation
+    ? [userLocation.lat, userLocation.lng]
+    : [20.2961, 85.8245];
+  const hospPos = hospital?.coordinate
+    ? [hospital.coordinate.lat || 20.2961, hospital.coordinate.lng || 85.8245]
+    : [20.2961, 85.8245];
+
+  const routePositions = [userPos, hospPos];
+  const center = [
+    (userPos[0] + hospPos[0]) / 2,
+    (userPos[1] + hospPos[1]) / 2,
   ];
 
-  const [messages, setMessages] = useState(initialMessages);
+  return (
+    <Box sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid #1e293b', height: 240 }}>
+      <MapContainer
+        center={center}
+        zoom={12}
+        style={{ height: '100%', width: '100%', background: '#0b0d14' }}
+        zoomControl={true}
+        scrollWheelZoom={false}
+      >
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          subdomains="abcd"
+          maxZoom={20}
+        />
+        {/* User marker */}
+        <Marker position={userPos}>
+          <Popup>
+            <strong>Your Location</strong>
+          </Popup>
+        </Marker>
+        {/* Hospital marker */}
+        <Marker position={hospPos} icon={hospitalIcon}>
+          <Popup>
+            <strong>{hospital?.hospital_name || 'Hospital'}</strong><br />
+            {hospital?.specialty || 'General'}<br />
+            {hospital?.distance_km?.toFixed(1)} km · {hospital?.travel_time_min} min ETA
+          </Popup>
+        </Marker>
+        {/* Route line */}
+        <Polyline
+          positions={routePositions}
+          pathOptions={{ color: '#14b8a6', weight: 3, dashArray: '8 6', opacity: 0.85 }}
+        />
+        <MapFlyTo positions={routePositions} />
+      </MapContainer>
+    </Box>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// App
+// ---------------------------------------------------------------------------
+function App() {
+  const GREETING = {
+    sender: 'assistant',
+    text: "Hi! I'm MEDX. Describe your symptoms and I'll help you find the right care immediately.",
+    time: now(),
+  };
+
+  const [messages, setMessages] = useState([GREETING]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [activeStep, setActiveStep] = useState(0); // 0: greeting, 1: symptom received, 2: severity received
-  const [selectedHospitalId, setSelectedHospitalId] = useState(1); // 1: AIIMS, 2: Apollo, 3: Kalinga
-  const [isNavModalOpen, setIsNavModalOpen] = useState(false);
-
+  const [userLocation, setUserLocation] = useState(null);
+  const [locationLabel, setLocationLabel] = useState(null);
+  const [locationError, setLocationError] = useState(false);
+  const [hospitals, setHospitals] = useState([]);
+  const [selectedHospitalId, setSelectedHospitalId] = useState(null);
+  const [classification, setClassification] = useState(null);
   const messagesEndRef = useRef(null);
 
-  // Auto-scroll messages
+  // Auto-scroll on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
+  // ---------------------------------------------------------------------------
+  // Geolocation — request once on mount
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationError(true);
+      setUserLocation({ lat: 20.2961, lng: 85.8245 });
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLocation(coords);
+        fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${coords.lat}&lon=${coords.lng}&format=json`,
+          { headers: { 'Accept-Language': 'en' } }
+        )
+          .then((r) => r.json())
+          .then((d) => {
+            const addr = d.address || {};
+            const label =
+              addr.road || addr.suburb || addr.city_district || addr.city || 'Your Location';
+            setLocationLabel(`${label}, ${addr.city || addr.town || 'Bhubaneswar'}`);
+          })
+          .catch(() => setLocationLabel('Your Location'));
+      },
+      () => {
+        setLocationError(true);
+        setUserLocation({ lat: 20.2961, lng: 85.8245 });
+        setLocationLabel('Bhubaneswar (default)');
+      }
+    );
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // API call to /chat
+  // ---------------------------------------------------------------------------
+  const callChatAPI = useCallback(
+    async (message) => {
+      const loc = userLocation || { lat: 20.2961, lng: 85.8245 };
+      const body = { message, lat: loc.lat, lng: loc.lng, top_n: 3 };
+      const res = await fetch(`${API_URL}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`Backend error ${res.status}`);
+      return res.json();
+    },
+    [userLocation]
+  );
+
+  // ---------------------------------------------------------------------------
+  // Message flow
+  // ---------------------------------------------------------------------------
+  const addMessage = (msg) =>
+    setMessages((prev) => [...prev, { ...msg, time: now() }]);
+
+  const processUserMessage = async (text) => {
+    addMessage({ sender: 'user', text });
+    setIsTyping(true);
+
+    try {
+      const data = await callChatAPI(text);
+      const cls = data.classification || {};
+      const recs = data.recommendations || [];
+      const isOffTopic = cls.off_topic;
+
+      if (isOffTopic) {
+        addMessage({
+          sender: 'assistant',
+          text: cls.message || data.response || "I can only help with health-related questions.",
+        });
+      } else {
+        addMessage({ sender: 'assistant', text: data.response });
+
+        if (cls.department && cls.department !== 'N/A') {
+          setClassification(cls);
+        }
+
+        if (userLocation) {
+          addMessage({
+            sender: 'assistant',
+            text: `Location detected: ${locationLabel || 'Bhubaneswar'}`,
+            isLocation: true,
+            coords: userLocation,
+          });
+        }
+
+        if (recs.length > 0) {
+          setHospitals(recs);
+          setSelectedHospitalId(recs[0].hospital_id);
+          addMessage({
+            sender: 'assistant',
+            text: `Found ${recs.length} hospital${recs.length > 1 ? 's' : ''} near you:`,
+            isHospitalsHeader: true,
+          });
+        } else if (data.message) {
+          addMessage({ sender: 'assistant', text: data.message });
+        }
+      }
+    } catch (err) {
+      addMessage({
+        sender: 'assistant',
+        text: 'Could not connect to the MEDX backend. Make sure the server is running on port 8000.',
+      });
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
   const handleSend = () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || isTyping) return;
     processUserMessage(inputText.trim());
     setInputText('');
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleSend();
-    }
+    if (e.key === 'Enter') { e.preventDefault(); handleSend(); }
   };
 
-  const processUserMessage = (text) => {
-    // Append user message
-    setMessages((prev) => [...prev, { sender: 'user', text: text, time: '09:42 AM' }]);
-    setIsTyping(true);
-
-    // Simulated flow logic
-    setTimeout(() => {
-      if (activeStep === 0) {
-        // Step 1: Emergency Detected + Ask Severity
-        setMessages((prev) => [
-          ...prev,
-          {
-            sender: 'assistant',
-            text: 'Emergency detected. Trauma + possible head injury. Locating you now.',
-            isAlert: true,
-            time: '09:42 AM'
-          },
-          {
-            sender: 'assistant',
-            text: "This sounds serious. I've detected your emergency. How severe is your condition right now?",
-            showSeverityChoices: true,
-            time: '09:42 AM'
-          }
-        ]);
-        setActiveStep(1);
-      } else if (activeStep === 1) {
-        // Step 2: Show Location + Hospitals Status + Route Graph
-        setMessages((prev) => [
-          ...prev,
-          {
-            sender: 'assistant',
-            text: "Got it. I've detected your location automatically.",
-            showLocation: true,
-            time: '09:43 AM'
-          },
-          {
-            sender: 'assistant',
-            text: "Finding nearest emergency hospitals with trauma care...",
-            showHospitalsList: true,
-            time: '09:43 AM'
-          },
-          {
-            sender: 'assistant',
-            text: "Fastest route to AIIMS Bhubaneswar (4 min):",
-            showRouteMap: true,
-            time: '09:43 AM'
-          }
-        ]);
-        setActiveStep(2);
-      }
-      setIsTyping(false);
-    }, 1000);
+  const handleQuickAction = (text) => {
+    if (text === 'Call ambulance') { window.location.href = 'tel:108'; return; }
+    processUserMessage(text);
   };
-
-  const handleSelectSeverity = (severityLabel, userReplyText) => {
-    // Append user bubble
-    setMessages((prev) => [...prev, { sender: 'user', text: userReplyText, time: '09:42 AM' }]);
-    setIsTyping(true);
-
-    setTimeout(() => {
-      // Show Location + Hospitals List + Route Card
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: 'assistant',
-          text: "Got it. I've detected your location automatically.",
-          showLocation: true,
-          time: '09:43 AM'
-        },
-        {
-          sender: 'assistant',
-          text: "Finding nearest emergency hospitals with trauma care...",
-          showHospitalsList: true,
-          time: '09:43 AM'
-        },
-        {
-          sender: 'assistant',
-          text: "Fastest route to AIIMS Bhubaneswar (4 min):",
-          showRouteMap: true,
-          time: '09:43 AM'
-        }
-      ]);
-      setActiveStep(2);
-      setIsTyping(false);
-    }, 1000);
-  };
-
-  const handleQuickAction = (action) => {
-    if (action === 'Call ambulance') {
-      window.location.href = 'tel:108';
-    } else {
-      processUserMessage(action);
-    }
-  };
-
-  // Hospital definitions matching the screenshot
-  const hospitals = [
-    {
-      id: 1,
-      name: 'AIIMS Bhubaneswar',
-      status: 'Open',
-      statusColor: '#10b981',
-      details: 'Trauma • Emergency • 2.4 km',
-      time: '4 min',
-      timeColor: '#10b981',
-      route: 'NH-16 → Sijua → AIIMS Gate 1',
-      routeDetails: '2.4 km - ~4 min - via NH-16',
-      svgData: {
-        land1: 'Patia Sq',
-        land2: 'Sijua Rd',
-        land3: 'NH-16 N',
-        dest: 'AIIMS',
-        etaColor: '#10b981'
-      }
-    },
-    {
-      id: 2,
-      name: 'Apollo Hospitals',
-      status: 'Open',
-      statusColor: '#10b981',
-      details: 'Emergency • Surgery • 3.1 km',
-      time: '7 min',
-      timeColor: '#94a3b8',
-      route: 'NH-16 → Samantapuri → Apollo Gate 2',
-      routeDetails: '3.1 km - ~7 min - via Sainik School Rd',
-      svgData: {
-        land1: 'Patia Sq',
-        land2: 'VSS Nagar',
-        land3: 'Sainik Sch',
-        dest: 'Apollo',
-        etaColor: '#94a3b8'
-      }
-    },
-    {
-      id: 3,
-      name: 'Kalinga Hospital',
-      status: 'Busy',
-      statusColor: '#f59e0b',
-      details: 'Emergency • 4.8 km',
-      time: '11 min',
-      timeColor: '#94a3b8',
-      route: 'NH-16 → Damana → Kalinga Entrance',
-      routeDetails: '4.8 km - ~11 min - via Damana Rd',
-      svgData: {
-        land1: 'Patia Sq',
-        land2: 'Damana Sq',
-        land3: 'C.Pur Rd',
-        dest: 'Kalinga',
-        etaColor: '#94a3b8'
-      }
-    }
-  ];
-
-  const activeHospital = hospitals.find(h => h.id === selectedHospitalId) || hospitals[0];
 
   const handleNewChat = () => {
-    setMessages(initialMessages);
-    setActiveStep(0);
-    setSelectedHospitalId(1);
+    setMessages([GREETING]);
+    setHospitals([]);
+    setSelectedHospitalId(null);
+    setClassification(null);
   };
 
+  const activeHospital = hospitals.find((h) => h.hospital_id === selectedHospitalId) || hospitals[0];
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box className="app-container">
-        
-        {/* Top Header */}
+
+        {/* Header */}
         <Box className="medx-header">
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box className="avatar bot" sx={{ width: 36, height: 36, fontSize: '18px' }}>🩺</Box>
+            <Box className="avatar bot" sx={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <TbStethoscope size={20} color="#14b8a6" />
+            </Box>
             <Box>
               <Typography variant="body1" sx={{ fontWeight: '800', color: '#f1f2f6', lineHeight: 1.2 }}>
                 MEDX Assistant
               </Typography>
-              <Typography variant="caption" sx={{ color: '#10b981', fontWeight: 'bold', display: 'block' }}>
-                ● Online • Emergency ready
+              <Typography variant="caption" sx={{ color: '#10b981', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Box component="span" sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#10b981', display: 'inline-block' }} />
+                Online · Emergency ready
               </Typography>
             </Box>
           </Box>
+
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <IconButton href="tel:108" sx={{ color: '#94a3b8', hover: { color: 'white' } }}>
-              📞
+            {locationLabel && (
+              <Chip
+                icon={<MdLocationOn size={13} />}
+                label={`${locationError ? 'Default — ' : ''}${locationLabel}`}
+                size="small"
+                sx={{ bgcolor: '#1b2234', color: '#94a3b8', fontSize: '11px', border: '1px solid #1e293b', '& .MuiChip-icon': { color: '#94a3b8' } }}
+              />
+            )}
+            {classification && (
+              <Chip
+                icon={<MdMedicalServices size={13} />}
+                label={`${classification.department} · ${classification.severity}`}
+                size="small"
+                sx={{
+                  bgcolor: 'rgba(239,68,68,0.08)',
+                  color: getSeverityColor(classification.severity),
+                  fontWeight: 'bold',
+                  fontSize: '11px',
+                  border: `1px solid ${getSeverityColor(classification.severity)}40`,
+                  '& .MuiChip-icon': { color: getSeverityColor(classification.severity) },
+                }}
+              />
+            )}
+            <IconButton href="tel:108" sx={{ color: '#94a3b8' }} title="Call 108">
+              <MdPhone size={20} />
             </IconButton>
-            <IconButton onClick={handleNewChat} sx={{ color: '#94a3b8', hover: { color: 'white' } }} title="Restart Triage">
-              ⋮
+            <IconButton onClick={handleNewChat} sx={{ color: '#94a3b8' }} title="New chat">
+              <MdMoreVert size={20} />
             </IconButton>
           </Box>
         </Box>
 
-        {/* Chat Area Workspace */}
+        {/* Workspace */}
         <Box className="medx-workspace">
           <Box className="medx-messages-scroll">
             <Box className="medx-messages-container">
-              
-              {/* Message List */}
+
               {messages.map((msg, index) => {
                 const isAI = msg.sender === 'assistant';
-                
-                // 1. Render Special Red Alert Card inside list
-                if (msg.isAlert) {
+
+                // Location pill
+                if (msg.isLocation) {
                   return (
-                    <Box key={index} className="emergency-alert-card">
-                      <Typography sx={{ fontSize: '18px', fontWeight: 'bold' }}>⚠️</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: '800', color: '#ef4444' }}>
-                        {msg.text}
-                      </Typography>
+                    <Box key={index} className="location-card" sx={{ my: 1 }}>
+                      <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                          <MdLocationOn size={22} color="#14b8a6" />
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: '800' }}>
+                              {locationLabel || 'Your Location'}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                              {msg.coords?.lat?.toFixed(4)}, {msg.coords?.lng?.toFixed(4)}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Chip
+                          icon={<MdCheckCircle size={12} />}
+                          label="Confirmed"
+                          size="small"
+                          className="location-badge"
+                          sx={{ '& .MuiChip-icon': { color: '#10b981' } }}
+                        />
+                      </Box>
                     </Box>
                   );
                 }
 
+                // Hospitals list + route map
+                if (msg.isHospitalsHeader) {
+                  return (
+                    <Box key={index} sx={{ display: 'flex', flexDirection: 'column', gap: 1, my: 1 }}>
+                      <Box className="message-row bot">
+                        <Box className="avatar bot" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <TbStethoscope size={16} color="#14b8a6" />
+                        </Box>
+                        <Box className="message-bubble">
+                          <Box className="bubble-content">
+                            <Typography variant="body1" sx={{ fontSize: '14.5px', lineHeight: 1.5 }}>
+                              {msg.text}
+                            </Typography>
+                          </Box>
+                          <Typography className="message-meta">{msg.time}</Typography>
+                        </Box>
+                      </Box>
+
+                      {/* Hospital cards */}
+                      <Box className="hospitals-status-list">
+                        {hospitals.map((h) => {
+                          const isSelected = selectedHospitalId === h.hospital_id;
+                          const score = Math.round((h.suitability_score || 0) * 100);
+                          return (
+                            <Box
+                              key={h.hospital_id}
+                              className={`hospital-status-row ${isSelected ? 'active' : ''}`}
+                              onClick={() => setSelectedHospitalId(h.hospital_id)}
+                            >
+                              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                                <MdLocalHospital size={22} color={isSelected ? '#10b981' : '#64748b'} />
+                                <Box>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography variant="body2" sx={{ fontWeight: '800' }}>
+                                      {h.hospital_name}
+                                    </Typography>
+                                    <Chip
+                                      label={`${score}% match`}
+                                      size="small"
+                                      sx={{
+                                        height: '18px', fontSize: '10px', fontWeight: 'bold',
+                                        bgcolor: score >= 80 ? '#10b981' : score >= 60 ? '#f59e0b' : '#64748b',
+                                        color: 'white',
+                                      }}
+                                    />
+                                  </Box>
+                                  <Typography variant="caption" sx={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <MdMedicalServices size={11} />
+                                    {h.specialty || 'General'} &nbsp;·&nbsp;
+                                    <MdDirectionsCar size={11} />
+                                    {h.distance_km?.toFixed(1)} km &nbsp;·&nbsp;
+                                    <MdAccessTime size={11} />
+                                    {h.travel_time_min} min ETA
+                                  </Typography>
+                                </Box>
+                              </Box>
+                              <Box sx={{ textAlign: 'right' }}>
+                                <Typography variant="body2" sx={{ fontWeight: '800', color: '#10b981' }}>
+                                  {h.travel_time_min} min
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 0.3, justifyContent: 'flex-end' }}>
+                                  <FaBed size={10} /> {h.beds} beds
+                                </Typography>
+                              </Box>
+                            </Box>
+                          );
+                        })}
+                      </Box>
+
+                      {/* Route card — Leaflet map */}
+                      {activeHospital && (
+                        <Box className="route-card">
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <FaRoute size={15} color="#14b8a6" />
+                              <Typography variant="body2" sx={{ fontWeight: '800' }}>
+                                Route to {activeHospital.hospital_name}
+                              </Typography>
+                            </Box>
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<MdOpenInNew size={13} />}
+                              href={`https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=${userLocation?.lat},${userLocation?.lng};${activeHospital.coordinate?.lat || 20.2961},${activeHospital.coordinate?.lng || 85.8245}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              sx={{ borderColor: '#334155', color: '#f1f2f6', textTransform: 'none', fontSize: '12px', px: 1.5, py: 0.4 }}
+                            >
+                              Open in OSM
+                            </Button>
+                          </Box>
+
+                          {/* Distance / ETA strip */}
+                          <Box sx={{ display: 'flex', gap: 2, mb: 1.5 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, bgcolor: '#0b0d14', px: 1.5, py: 0.8, borderRadius: 2, border: '1px solid #1e293b' }}>
+                              <MdDirectionsCar size={15} color="#14b8a6" />
+                              <Typography variant="caption" sx={{ fontWeight: '700', color: '#f1f2f6' }}>
+                                {activeHospital.distance_km?.toFixed(1)} km via road
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, bgcolor: '#0b0d14', px: 1.5, py: 0.8, borderRadius: 2, border: '1px solid #1e293b' }}>
+                              <MdAccessTime size={15} color="#14b8a6" />
+                              <Typography variant="caption" sx={{ fontWeight: '700', color: '#f1f2f6' }}>
+                                ~{activeHospital.travel_time_min} min ETA
+                              </Typography>
+                            </Box>
+                          </Box>
+
+                          {/* Live OSM map */}
+                          <RouteMap userLocation={userLocation} hospital={activeHospital} />
+                        </Box>
+                      )}
+                    </Box>
+                  );
+                }
+
+                // Normal message bubble
                 return (
                   <Box key={index} className={`message-row ${isAI ? 'bot' : 'user'}`}>
-                    {/* Bot Doctor Icon / User Icon */}
                     {isAI ? (
-                      <Box className="avatar bot">🩺</Box>
+                      <Box className="avatar bot" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <TbStethoscope size={16} color="#14b8a6" />
+                      </Box>
                     ) : (
-                      <Box sx={{ order: 2 }} className="avatar user">D</Box>
+                      <Box sx={{ order: 2 }} className="avatar user">
+                        <MdPerson size={16} color="#0e111a" />
+                      </Box>
                     )}
-                    
                     <Box className="message-bubble">
                       <Box className="bubble-content">
                         <Typography variant="body1" sx={{ fontSize: '14.5px', lineHeight: 1.5 }}>
                           {msg.text}
                         </Typography>
                       </Box>
-                      <Typography className="message-meta">
-                        {msg.time}
-                      </Typography>
-
-                      {/* Inline Severity Select buttons */}
-                      {isAI && msg.showSeverityChoices && index === messages.length - 1 && (
-                        <Box className="severity-buttons-row">
-                          <Button
-                            variant="outlined"
-                            className="severity-choice-btn"
-                            onClick={() => handleSelectSeverity('Critical', "Critical — can't move")}
-                            sx={{ color: '#ef4444', borderColor: '#1e293b', textTransform: 'none' }}
-                          >
-                            Critical — can't move
-                          </Button>
-                          <Button
-                            variant="outlined"
-                            className="severity-choice-btn"
-                            onClick={() => handleSelectSeverity('Moderate', "Moderate, I'm conscious but bleeding badly.")}
-                            sx={{ color: '#f59e0b', borderColor: '#1e293b', textTransform: 'none' }}
-                          >
-                            Moderate — conscious
-                          </Button>
-                          <Button
-                            variant="outlined"
-                            className="severity-choice-btn"
-                            onClick={() => handleSelectSeverity('Mild', "Mild — stable")}
-                            sx={{ color: '#22c55e', borderColor: '#1e293b', textTransform: 'none' }}
-                          >
-                            Mild — stable
-                          </Button>
-                        </Box>
-                      )}
-
-                      {/* Location Card */}
-                      {isAI && msg.showLocation && (
-                        <Box className="location-card">
-                          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-                            <Box sx={{ fontSize: '20px' }}>📍</Box>
-                            <Box>
-                              <Typography variant="body2" sx={{ fontWeight: '800' }}>
-                                NH-16, Near Patia Square, Bhubaneswar
-                              </Typography>
-                              <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                                Odisha • Lat 20.3521, Lng 85.8193
-                              </Typography>
-                            </Box>
-                          </Box>
-                          <Chip label="Confirmed" size="small" className="location-badge" />
-                        </Box>
-                      )}
-
-                      {/* Hospital Status Rows Card */}
-                      {isAI && msg.showHospitalsList && (
-                        <Box className="hospitals-status-list">
-                          {hospitals.map((h) => {
-                            const isSelected = selectedHospitalId === h.id;
-                            return (
-                              <Box 
-                                key={h.id} 
-                                className={`hospital-status-row ${isSelected ? 'active' : ''}`}
-                                onClick={() => setSelectedHospitalId(h.id)}
-                              >
-                                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-                                  <Box sx={{ fontSize: '20px', color: isSelected ? '#10b981' : '#94a3b8' }}>🏥</Box>
-                                  <Box>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                      <Typography variant="body2" sx={{ fontWeight: '800' }}>
-                                        {h.name}
-                                      </Typography>
-                                      <Chip 
-                                        label={h.status} 
-                                        size="small" 
-                                        sx={{ 
-                                          height: '18px', 
-                                          fontSize: '10px', 
-                                          fontWeight: 'bold', 
-                                          bgcolor: h.statusColor, 
-                                          color: 'white' 
-                                        }} 
-                                      />
-                                    </Box>
-                                    <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                                      {h.details}
-                                    </Typography>
-                                  </Box>
-                                </Box>
-                                <Typography variant="body2" sx={{ fontWeight: '800', color: h.timeColor }}>
-                                  {h.time}
-                                </Typography>
-                              </Box>
-                            );
-                          })}
-                        </Box>
-                      )}
-
-                      {/* SVG Routing Map Card */}
-                      {isAI && msg.showRouteMap && (
-                        <Box className="route-card">
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                            <Typography variant="body2" sx={{ fontWeight: '800' }}>
-                              Fastest route to {activeHospital.name} ({activeHospital.time}):
-                            </Typography>
-                          </Box>
-                          
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#0b0d14', p: 2, borderRadius: 2, border: '1px solid #1e293b', mb: 2 }}>
-                            <Typography variant="body2" sx={{ fontWeight: '800', color: '#f1f2f6' }}>
-                              🛣️ {activeHospital.route}
-                            </Typography>
-                            <Button 
-                              variant="outlined" 
-                              size="small" 
-                              onClick={() => setIsNavModalOpen(true)}
-                              sx={{ borderColor: '#334155', color: '#f1f2f6', textTransform: 'none', px: 2, py: 0.5 }}
-                            >
-                              Open Maps
-                            </Button>
-                          </Box>
-
-                          {/* Dynamic SVG Timeline Map */}
-                          <Box sx={{ bgcolor: '#0b0d14', p: 2, borderRadius: 2, border: '1px solid #1e293b' }}>
-                            <svg width="100%" height="80" viewBox="0 0 560 80">
-                              {/* Connector line */}
-                              <line x1="40" y1="35" x2="520" y2="35" stroke="#10b981" strokeWidth="3" strokeDasharray="6,6" />
-                              
-                              {/* You red node */}
-                              <circle cx="40" cy="35" r="8" fill="#ef4444" />
-                              <text x="40" y="16" fill="#ef4444" fontSize="10" fontWeight="bold" textAnchor="middle">You</text>
-                              
-                              {/* Landmark 1 */}
-                              <rect x="100" y="23" width="75" height="24" rx="4" fill="#161a24" stroke="#1e293b" />
-                              <text x="137.5" y="39" fill="#94a3b8" fontSize="9" textAnchor="middle">{activeHospital.svgData.land1}</text>
-                              
-                              {/* Landmark 2 */}
-                              <rect x="220" y="23" width="75" height="24" rx="4" fill="#161a24" stroke="#1e293b" />
-                              <text x="257.5" y="39" fill="#94a3b8" fontSize="9" textAnchor="middle">{activeHospital.svgData.land2}</text>
-                              
-                              {/* Landmark 3 */}
-                              <rect x="340" y="23" width="75" height="24" rx="4" fill="#161a24" stroke="#1e293b" />
-                              <text x="377.5" y="39" fill="#94a3b8" fontSize="9" textAnchor="middle">{activeHospital.svgData.land3}</text>
-                              
-                              {/* Hospital Green node */}
-                              <circle cx="520" cy="35" r="10" fill="#10b981" />
-                              <text x="520" y="35" fill="white" fontSize="10" fontWeight="bold" textAnchor="middle" dominantBaseline="central">H</text>
-                              <text x="520" y="16" fill="#10b981" fontSize="10" fontWeight="bold" textAnchor="middle">{activeHospital.svgData.dest}</text>
-                              
-                              {/* Routing metadata text */}
-                              <text x="280" y="70" fill="#14b8a6" fontSize="11" fontWeight="bold" textAnchor="middle">
-                                {activeHospital.routeDetails}
-                              </text>
-                            </svg>
-                          </Box>
-                        </Box>
-                      )}
+                      <Typography className="message-meta">{msg.time}</Typography>
                     </Box>
                   </Box>
                 );
               })}
 
-              {/* Loader/Hospital alert animation */}
-              {activeStep === 2 && !isTyping && (
-                <Box className="message-row bot" sx={{ mt: 1 }}>
-                  <Box className="avatar bot">🩺</Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 1 }}>
-                    <Box className="loader-dots">
-                      <span className="dot"></span>
-                      <span className="dot" style={{ animationDelay: '0.2s' }}></span>
-                      <span className="dot" style={{ animationDelay: '0.4s' }}></span>
-                    </Box>
-                    <Typography variant="body2" sx={{ color: '#94a3b8', fontStyle: 'italic' }}>
-                      Alerting hospital...
-                    </Typography>
-                  </Box>
-                </Box>
-              )}
-
-              {/* Typing Dot Animation */}
+              {/* Typing indicator */}
               {isTyping && (
                 <Box className="message-row bot">
-                  <Box className="avatar bot">🩺</Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 1 }}>
-                    <Box className="loader-dots">
-                      <span className="dot"></span>
-                      <span className="dot" style={{ animationDelay: '0.2s' }}></span>
-                      <span className="dot" style={{ animationDelay: '0.4s' }}></span>
-                    </Box>
-                    <Typography variant="body2" sx={{ color: '#94a3b8' }}>
-                      MEDX is typing
-                    </Typography>
+                  <Box className="avatar bot" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <TbStethoscope size={16} color="#14b8a6" />
+                  </Box>
+                  <Box sx={{
+                    bgcolor: '#1b2234',
+                    borderRadius: '12px 12px 12px 2px',
+                    p: '14px 18px',
+                    border: '1px solid #1e293b',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1.2,
+                    minWidth: '240px'
+                  }}>
+                    {[
+                      { Icon: LuBrain, label: 'Analyzing symptoms', delay: '0s' },
+                      { Icon: MdLocalHospital, label: 'Finding nearby hospitals', delay: '0.6s' },
+                      { Icon: LuZap, label: 'Generating response', delay: '1.2s' },
+                    ].map(({ Icon, label, delay }, i) => (
+                      <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}
+                        style={{ animation: `stepFadeIn 0.4s ease ${delay} forwards`, opacity: 0 }}
+                      >
+                        <Icon size={15} color="#94a3b8" />
+                        <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: '500', flex: 1, fontSize: '13px' }}>
+                          {label}
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+                          {[0, 1, 2].map((j) => (
+                            <Box key={j} component="span" sx={{
+                              width: 5, height: 5, borderRadius: '50%', bgcolor: '#14b8a6', display: 'inline-block',
+                              animation: `spinnerPulse 1.1s infinite ease-in-out`,
+                              animationDelay: `calc(${delay} + ${j * 0.15}s)`,
+                            }} />
+                          ))}
+                        </Box>
+                      </Box>
+                    ))}
                   </Box>
                 </Box>
               )}
@@ -485,90 +597,68 @@ function App() {
             </Box>
           </Box>
 
-          {/* Sticky Conversational Input & Quick Actions */}
+          {/* Bottom input area */}
           <Box className="bottom-drawer">
-            {/* Quick Actions */}
+            {/* Quick actions */}
             <Box className="quick-actions-row">
               <button className="quick-action-btn" onClick={() => handleQuickAction('Call ambulance')}>
-                📞 Call ambulance
+                <FaAmbulance size={13} /> Call ambulance
               </button>
-              <button className="quick-action-btn" onClick={() => handleQuickAction('Share live location')}>
-                📍 Share live location
+              <button className="quick-action-btn" onClick={() => handleQuickAction('I have chest pain and shortness of breath')}>
+                <FaHeartbeat size={13} /> Chest pain
               </button>
-              <button className="quick-action-btn" onClick={() => handleQuickAction('Contact family')}>
-                👥 Contact family
+              <button className="quick-action-btn" onClick={() => handleQuickAction('I have high fever and body aches')}>
+                <MdThermostat size={14} /> Fever
               </button>
-              <button className="quick-action-btn" onClick={() => handleQuickAction('Call hospital')}>
-                🏥 Call hospital
+              <button className="quick-action-btn" onClick={() => handleQuickAction('I had an accident and need help')}>
+                <MdEmergency size={14} /> Accident
               </button>
             </Box>
 
-            {/* Message input */}
+            {/* Input bar */}
             <Box className="chat-input-bar">
-              <span style={{ fontSize: '18px', cursor: 'pointer', opacity: 0.6 }} title="Attach File">📎</span>
+              <MdAttachFile size={20} style={{ opacity: 0.5, cursor: 'pointer', flexShrink: 0 }} />
               <InputBase
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Describe your emergency..."
+                placeholder="Describe your symptoms or emergency..."
                 fullWidth
                 disabled={isTyping}
                 sx={{ fontSize: '14.5px', py: 0.5, color: '#f1f2f6' }}
               />
-              <span style={{ fontSize: '18px', cursor: 'pointer', opacity: 0.6 }} title="Voice Input">🎤</span>
-              
-              <IconButton 
+              <MdMic size={20} style={{ opacity: 0.5, cursor: 'pointer', flexShrink: 0 }} />
+              <IconButton
                 onClick={handleSend}
                 disabled={!inputText.trim() || isTyping}
-                sx={{ 
-                  bgcolor: '#14b8a6',
-                  color: 'white',
-                  width: 32,
-                  height: 32,
-                  borderRadius: '50%',
+                sx={{
+                  bgcolor: '#14b8a6', color: 'white', width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
                   '&:hover': { bgcolor: '#0d9488' },
-                  '&.Mui-disabled': { bgcolor: '#1e293b', color: '#475569' }
+                  '&.Mui-disabled': { bgcolor: '#1e293b', color: '#475569' },
                 }}
               >
-                ↑
+                <MdSend size={15} />
               </IconButton>
-            </Box>
             </Box>
           </Box>
         </Box>
 
-        {/* Dynamic Presentation Navigation Modal */}
-        <Dialog 
-          open={isNavModalOpen} 
-          onClose={() => setIsNavModalOpen(false)}
-          PaperProps={{
-            sx: {
-              bgcolor: '#0e111a',
-              border: '1px solid #1e293b',
-              borderRadius: '16px',
-              p: 2
-            }
-          }}
-        >
-          <DialogTitle sx={{ fontWeight: '800', color: '#f59e0b', pb: 1 }}>
-            🚧 Navigation Module
-          </DialogTitle>
-          <DialogContent>
-            <Typography variant="body2" sx={{ color: '#94a3b8', lineHeight: 1.6 }}>
-              Google Maps integration is under development. Live route navigation will be fully enabled after backend API integration.
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button 
-              variant="contained" 
-              onClick={() => setIsNavModalOpen(false)}
-              sx={{ bgcolor: '#14b8a6', color: 'white', '&:hover': { bgcolor: '#0d9488' } }}
-            >
-              OK
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </ThemeProvider>
+        {/* Keyframe styles */}
+        <style>{`
+          @keyframes stepFadeIn {
+            from { opacity: 0; transform: translateX(-6px); }
+            to   { opacity: 1; transform: translateX(0); }
+          }
+          @keyframes spinnerPulse {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
+            40%            { transform: scale(1.0); opacity: 1; }
+          }
+          .leaflet-container {
+            background: #0b0d14 !important;
+          }
+        `}</style>
+      </Box>
+    </ThemeProvider>
   );
 }
 

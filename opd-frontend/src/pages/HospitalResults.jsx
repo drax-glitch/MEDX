@@ -1,13 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Box, Typography, Card, CardContent, Button, Chip, Rating, Grid, Alert, Divider } from '@mui/material';
-import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
 import PatientSummary from '../components/PatientSummary';
-
-const MAP_CONTAINER_STYLE = {
-  width: '100%',
-  height: '100%',
-  borderRadius: '12px'
-};
 
 const DEFAULT_CENTER = {
   lat: 20.2800,

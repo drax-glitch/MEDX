@@ -1,5 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Box, Card, CardContent, Typography, Button, IconButton, InputBase, Grid, Chip, Divider } from '@mui/material';
+import { MdLocalHospital, MdSend, MdFavorite, MdThermostat, MdEmergency, MdMedicalServices, MdCheckCircle, MdPerson, MdWarning } from 'react-icons/md';
+import { FaAmbulance, FaHeartbeat, FaBed, FaLungs, FaBrain } from 'react-icons/fa';
+import { TbStethoscope } from 'react-icons/tb';
+import { LuBrain, LuZap } from 'react-icons/lu';
+import { GiPill } from 'react-icons/gi';
+
 
 function ChatArea({
   messages,
@@ -38,12 +44,12 @@ function ChatArea({
   };
 
   const quickSymptoms = [
-    { label: 'Chest Pain', icon: '❤️', value: 'Chest Pain', color: '#ef4444' },
-    { label: 'Fever', icon: '🤒', value: 'Fever', color: '#f59e0b' },
-    { label: 'Breathing Issue', icon: '🫁', value: 'Breathing Issue', color: '#8b5cf6' },
-    { label: 'Accident', icon: '🚑', value: 'Accident', color: '#3b82f6' },
-    { label: 'Head Injury', icon: '🤕', value: 'Head Injury', color: '#e11d48' },
-    { label: 'Pregnancy', icon: '🤰', value: 'Pregnancy', color: '#ec4899' },
+    { label: 'Chest Pain', Icon: FaHeartbeat, value: 'Chest Pain', color: '#ef4444' },
+    { label: 'Fever', Icon: MdThermostat, value: 'Fever', color: '#f59e0b' },
+    { label: 'Breathing Issue', Icon: FaLungs, value: 'Breathing Issue', color: '#8b5cf6' },
+    { label: 'Accident', Icon: FaAmbulance, value: 'Accident', color: '#3b82f6' },
+    { label: 'Head Injury', Icon: FaBrain, value: 'Head Injury', color: '#e11d48' },
+    { label: 'Pregnancy', Icon: MdMedicalServices, value: 'Pregnancy', color: '#ec4899' },
   ];
 
   // Welcome state is when there's only the start greeting
@@ -63,8 +69,8 @@ function ChatArea({
         }}
       >
         <Box>
-          <Typography variant="subtitle1" sx={{ fontWeight: '800', color: '#f1f2f6' }}>
-            💬 MEDX Consultation Room
+          <Typography variant="subtitle1" sx={{ fontWeight: '800', color: '#f1f2f6', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <TbStethoscope size={20} color="#14b8a6" /> MEDX Consultation Room
           </Typography>
           <Typography variant="caption" sx={{ color: '#94a3b8' }}>
             AI Triage Engine Active
@@ -113,7 +119,7 @@ function ChatArea({
                 }}
                 className="glow-emergency"
               >
-                <Typography sx={{ fontSize: '32px' }}>🚨</Typography>
+                <Box sx={{ fontSize: '32px', display: 'flex', alignItems: 'center' }}><MdEmergency color="#ef4444" /></Box>
                 <Box>
                   <Typography variant="subtitle2" sx={{ color: '#ef4444', fontWeight: '800', fontSize: '15px' }}>
                     Critical Severity Detected
@@ -139,8 +145,8 @@ function ChatArea({
             >
               {/* Sender label for AI */}
               {isAI && (
-                <Typography variant="caption" sx={{ color: '#14b8a6', fontWeight: 'bold', pl: 1 }}>
-                  🩺 MEDX AI
+                <Typography variant="caption" sx={{ color: '#14b8a6', fontWeight: 'bold', pl: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <TbStethoscope size={16} /> MEDX AI
                 </Typography>
               )}
               
@@ -178,7 +184,7 @@ function ChatArea({
                       '&:hover': { bgcolor: 'rgba(34, 197, 94, 0.15)', borderColor: '#22c55e' }
                     }}
                   >
-                    🟢 Mild
+                    <MdCheckCircle style={{ marginRight: '4px' }} /> Mild
                   </Button>
                   <Button
                     variant="outlined"
@@ -195,7 +201,7 @@ function ChatArea({
                       '&:hover': { bgcolor: 'rgba(245, 158, 11, 0.15)', borderColor: '#f59e0b' }
                     }}
                   >
-                    🟡 Moderate
+                    <MdWarning style={{ marginRight: '4px' }} /> Moderate
                   </Button>
                   <Button
                     variant="outlined"
@@ -212,7 +218,7 @@ function ChatArea({
                       '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.15)', borderColor: '#ef4444' }
                     }}
                   >
-                    🔴 Severe
+                    <MdEmergency style={{ marginRight: '4px' }} /> Severe
                   </Button>
                 </Box>
               )}
@@ -246,7 +252,9 @@ function ChatArea({
                       >
                         <CardContent sx={{ p: '16px !important', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-                            <Box sx={{ fontSize: '24px', bgcolor: 'rgba(20, 184, 166, 0.08)', p: 1, borderRadius: 2, border: '1px solid #1e293b' }}>🏥</Box>
+                            <Box sx={{ fontSize: '24px', bgcolor: 'rgba(20, 184, 166, 0.08)', p: 1, borderRadius: 2, border: '1px solid #1e293b', display: 'flex', alignItems: 'center' }}>
+                              <MdLocalHospital color="#14b8a6" />
+                            </Box>
                             <Box>
                               <Typography variant="body2" sx={{ fontWeight: '800', color: '#f1f2f6' }}>
                                 {h.hospital_name || h.name}
@@ -282,31 +290,69 @@ function ChatArea({
           );
         })}
 
-        {/* Flashing Generating Typing animation */}
+        {/* Animated Pipeline Loading Indicator */}
         {isTyping && (
-          <Box sx={{ alignSelf: 'flex-start', maxWidth: '75%', display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            <Typography variant="caption" sx={{ color: '#14b8a6', fontWeight: 'bold', pl: 1 }}>
-              🩺 MEDX AI
+          <Box sx={{ alignSelf: 'flex-start', maxWidth: '85%', display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            <Typography variant="caption" sx={{ color: '#14b8a6', fontWeight: 'bold', pl: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <TbStethoscope size={16} /> MEDX AI
             </Typography>
-            <Box sx={{ bgcolor: '#1b2234', color: '#94a3b8', borderRadius: '12px 12px 12px 2px', p: '12px 18px', border: '1px solid #1e293b', display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="body2" sx={{ fontWeight: '500' }}>
-                MEDX is analyzing
-              </Typography>
-              <Box className="typing-dots" sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-                <span className="dot">●</span>
-                <span className="dot" style={{ animationDelay: '0.2s' }}>●</span>
-                <span className="dot" style={{ animationDelay: '0.4s' }}>●</span>
-              </Box>
+            <Box sx={{
+              bgcolor: '#1b2234',
+              borderRadius: '12px 12px 12px 2px',
+              p: '14px 18px',
+              border: '1px solid #1e293b',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1.2,
+              minWidth: '240px'
+            }}>
+              {[
+                { icon: <LuBrain size={18} />, label: 'Analyzing symptoms', delay: '0s' },
+                { icon: <MdLocalHospital size={18} />, label: 'Finding nearby hospitals', delay: '0.6s' },
+                { icon: <LuZap size={18} />, label: 'Generating response', delay: '1.2s' },
+              ].map((step, i) => (
+                <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}
+                  className={`pipeline-step pipeline-step-${i}`}
+                  style={{ animationDelay: step.delay }}
+                >
+                  <Box sx={{ fontSize: '15px', opacity: 0.9, display: 'flex', alignItems: 'center' }}>{step.icon}</Box>
+                  <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: '500', flex: 1, fontSize: '13px' }}>
+                    {step.label}
+                  </Typography>
+                  <Box className="step-spinner" style={{ animationDelay: step.delay }}>
+                    <span className="spinner-dot" style={{ animationDelay: step.delay }}></span>
+                    <span className="spinner-dot" style={{ animationDelay: `calc(${step.delay} + 0.15s)` }}></span>
+                    <span className="spinner-dot" style={{ animationDelay: `calc(${step.delay} + 0.30s)` }}></span>
+                  </Box>
+                </Box>
+              ))}
             </Box>
 
             <style>{`
-              .typing-dots .dot {
-                animation: pulseDot 1.2s infinite;
-                font-size: 8px;
+              .pipeline-step {
+                animation: stepFadeIn 0.4s ease forwards;
+                opacity: 0;
               }
-              @keyframes pulseDot {
-                0%, 100% { opacity: 0.3; }
-                50% { opacity: 1; }
+              @keyframes stepFadeIn {
+                from { opacity: 0; transform: translateX(-6px); }
+                to   { opacity: 1; transform: translateX(0); }
+              }
+              .step-spinner {
+                display: flex;
+                gap: 3px;
+                align-items: center;
+              }
+              .spinner-dot {
+                width: 5px;
+                height: 5px;
+                border-radius: 50%;
+                background: #14b8a6;
+                display: inline-block;
+                animation: spinnerPulse 1.1s infinite ease-in-out;
+              }
+              @keyframes spinnerPulse {
+                0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
+                40%            { transform: scale(1.0); opacity: 1; }
               }
             `}</style>
           </Box>
@@ -315,9 +361,9 @@ function ChatArea({
         {/* Welcome Grid Symptom Starters */}
         {showStarters && (
           <Box sx={{ mt: 2, border: '1px dashed #334155', borderRadius: 3, p: 3, bgcolor: '#0e111a' }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: '800', color: '#f1f2f6', mb: 1 }}>
-              💡 Quick Triage Starters
-            </Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: '800', color: '#f1f2f6', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <LuZap color="#f59e0b" /> Quick Triage Starters
+              </Typography>
             <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block', mb: 2 }}>
               Choose a quick symptom card below to initiate diagnostic matching:
             </Typography>
