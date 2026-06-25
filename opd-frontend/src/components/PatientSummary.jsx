@@ -3,7 +3,7 @@ import { styled } from '@mui/material/styles';
 
 const CustomConnector = styled(StepConnector)(({ theme }) => ({
   '& .MuiStepConnector-line': {
-    borderColor: '#e2e8f0',
+    borderColor: '#1e293b',
     borderWidth: 2,
   },
   '&.Mui-active .MuiStepConnector-line': {
@@ -78,13 +78,13 @@ function PatientSummary({ symptoms = [], currentView = 'consultation' }) {
   ];
 
   return (
-    <Box className="patient-summary" sx={{ gap: 2 }}>
-      <Typography variant="h6" sx={{ fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: 1 }}>
+    <Box className="patient-summary" sx={{ gap: 2, bgcolor: '#0e111a', borderLeft: '1px solid #1e293b' }}>
+      <Typography variant="h6" sx={{ fontWeight: '800', color: '#f1f2f6', display: 'flex', alignItems: 'center', gap: 1 }}>
         📋 Patient Summary
       </Typography>
 
       {/* Compact Demographics and Current Assessment Card */}
-      <Card sx={{ border: '1px solid #e2e8f0', boxShadow: 'none' }}>
+      <Card sx={{ border: '1px solid #1e293b', bgcolor: '#0a0c14', boxShadow: 'none' }}>
         <CardContent sx={{ p: '16px !important' }}>
           <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 'bold', display: 'block', mb: 1.5 }}>
             CURRENT ASSESSMENT
@@ -92,7 +92,7 @@ function PatientSummary({ symptoms = [], currentView = 'consultation' }) {
 
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#475569' }}>
+              <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#94a3b8' }}>
                 ⚠️ Severity:
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 'bold', color: severityLabelColor }}>
@@ -101,7 +101,7 @@ function PatientSummary({ symptoms = [], currentView = 'consultation' }) {
             </Box>
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#475569' }}>
+              <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#94a3b8' }}>
                 🚨 Priority:
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 'bold', color: priorityLabelColor }}>
@@ -109,20 +109,20 @@ function PatientSummary({ symptoms = [], currentView = 'consultation' }) {
               </Typography>
             </Box>
 
-            <Divider sx={{ my: 0.5 }} />
+            <Divider sx={{ my: 0.5, borderColor: '#1e293b' }} />
 
             <Box>
-              <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#475569', mb: 0.5 }}>
+              <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#94a3b8', mb: 0.5 }}>
                 📝 Reported Symptoms:
               </Typography>
               {symptoms.length === 0 ? (
-                <Typography variant="caption" sx={{ fontStyle: 'italic', color: '#94a3b8', pl: 1 }}>
+                <Typography variant="caption" sx={{ fontStyle: 'italic', color: '#64748b', pl: 1 }}>
                   • None reported yet
                 </Typography>
               ) : (
                 <Box sx={{ pl: 1, display: 'flex', flexDirection: 'column', gap: 0.3 }}>
                   {symptoms.map((symptom, idx) => (
-                    <Typography key={idx} variant="caption" sx={{ color: '#0f172a', fontWeight: '500' }}>
+                    <Typography key={idx} variant="caption" sx={{ color: '#f1f2f6', fontWeight: '500' }}>
                       • {symptom}
                     </Typography>
                   ))}
@@ -130,13 +130,13 @@ function PatientSummary({ symptoms = [], currentView = 'consultation' }) {
               )}
             </Box>
 
-            <Divider sx={{ my: 0.5 }} />
+            <Divider sx={{ my: 0.5, borderColor: '#1e293b' }} />
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#475569' }}>
+              <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#94a3b8' }}>
                 📍 Location:
               </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#f1f2f6' }}>
                 Bhubaneswar
               </Typography>
             </Box>
@@ -145,7 +145,7 @@ function PatientSummary({ symptoms = [], currentView = 'consultation' }) {
       </Card>
 
       {/* MEDX Priority Score & Reasoning */}
-      <Card sx={{ border: '1px solid #e2e8f0', bgcolor: score >= 85 ? 'rgba(239, 68, 68, 0.02)' : 'white', boxShadow: 'none' }}>
+      <Card sx={{ border: '1px solid #1e293b', bgcolor: score >= 85 ? 'rgba(239, 68, 68, 0.05)' : '#0a0c14', boxShadow: 'none' }}>
         <CardContent sx={{ p: '16px !important' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
             <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 'bold' }}>
@@ -168,7 +168,7 @@ function PatientSummary({ symptoms = [], currentView = 'consultation' }) {
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
             {reasons.map((reason, idx) => (
-              <Typography key={idx} variant="caption" sx={{ color: '#475569', display: 'block', lineHeight: 1.3 }}>
+              <Typography key={idx} variant="caption" sx={{ color: '#94a3b8', display: 'block', lineHeight: 1.3 }}>
                 • {reason}
               </Typography>
             ))}
@@ -176,11 +176,11 @@ function PatientSummary({ symptoms = [], currentView = 'consultation' }) {
         </CardContent>
       </Card>
 
-      <Divider />
+      <Divider sx={{ borderColor: '#1e293b' }} />
 
       {/* Workflow timeline */}
       <Box>
-        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#475569', mb: 1.5 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#94a3b8', mb: 1.5 }}>
           AI Processing Pipeline
         </Typography>
         <Stepper orientation="vertical" connector={<CustomConnector />} sx={{ p: 0 }}>
@@ -189,7 +189,7 @@ function PatientSummary({ symptoms = [], currentView = 'consultation' }) {
               <StepLabel
                 StepIconProps={{
                   sx: {
-                    color: step.active ? '#14b8a6 !important' : '#cbd5e1 !important',
+                    color: step.active ? '#14b8a6 !important' : '#334155 !important',
                   }
                 }}
               >
@@ -197,7 +197,7 @@ function PatientSummary({ symptoms = [], currentView = 'consultation' }) {
                   variant="caption"
                   sx={{
                     fontWeight: step.active ? 'bold' : 'normal',
-                    color: step.active ? '#0f172a' : '#64748b'
+                    color: step.active ? '#f1f2f6' : '#475569'
                   }}
                 >
                   {step.label}

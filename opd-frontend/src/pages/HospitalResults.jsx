@@ -1,13 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Box, Typography, Card, CardContent, Button, Chip, Rating, Grid, Alert, Divider } from '@mui/material';
-import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
 import PatientSummary from '../components/PatientSummary';
-
-const MAP_CONTAINER_STYLE = {
-  width: '100%',
-  height: '100%',
-  borderRadius: '12px'
-};
 
 const DEFAULT_CENTER = {
   lat: 20.2800,
@@ -95,15 +88,15 @@ function HospitalResults({ symptoms, onBookHospital }) {
     <Box sx={{ display: 'flex', flex: 1, height: '100%', overflow: 'hidden' }}>
       
       {/* Left Results Section (Map + List of Cards) */}
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', p: 3, gap: 3 }}>
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', p: 3, gap: 3, bgcolor: '#0a0c14' }}>
         
         {/* Results Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Box>
-            <Typography variant="h5" sx={{ fontWeight: '800', color: '#0f172a' }}>
+            <Typography variant="h5" sx={{ fontWeight: '800', color: '#f1f2f6' }}>
               🏥 MATCHED FACILITIES & NAVIGATION
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{ color: '#94a3b8' }}>
               Optimized emergency transit guidelines and trauma unit coordination
             </Typography>
           </Box>
@@ -219,7 +212,7 @@ function HospitalResults({ symptoms, onBookHospital }) {
 
         {/* Recommended Hospitals List Section (Bottom) */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#475569' }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#94a3b8' }}>
             Recommended Hospitals (Sorted by Priority Match)
           </Typography>
 
@@ -234,17 +227,18 @@ function HospitalResults({ symptoms, onBookHospital }) {
                       cursor: 'pointer',
                       height: '100%',
                       transition: 'all 0.2s',
-                      border: isSelected ? `2.5px solid ${hospital.color}` : '1px solid #e2e8f0',
-                      boxShadow: isSelected ? '0 4px 12px rgba(15, 23, 42, 0.05)' : 'none',
+                      bgcolor: '#0e111a',
+                      border: isSelected ? `2.5px solid ${hospital.color}` : '1px solid #1e293b',
+                      boxShadow: isSelected ? '0 4px 12px rgba(20, 184, 166, 0.1)' : 'none',
                       '&:hover': {
                         transform: 'translateY(-2px)',
-                        boxShadow: '0 4px 8px rgba(0,0,0,0.04)'
+                        borderColor: isSelected ? hospital.color : '#334155'
                       }
                     }}
                   >
                     <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1.2 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#0f172a' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#f1f2f6' }}>
                           {hospital.name}
                         </Typography>
                         <Chip
@@ -252,27 +246,28 @@ function HospitalResults({ symptoms, onBookHospital }) {
                           size="small"
                           sx={{
                             fontWeight: 'bold',
-                            bgcolor: isSelected ? hospital.color : '#f1f5f9',
-                            color: isSelected ? 'white' : '#475569',
+                            bgcolor: isSelected ? hospital.color : '#1b2234',
+                            color: isSelected ? 'white' : '#94a3b8',
+                            border: isSelected ? 'none' : '1px solid #1e293b',
                             fontSize: '11px'
                           }}
                         />
                       </Box>
 
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>
                         {hospital.specialty}
                       </Typography>
 
-                      <Divider />
+                      <Divider sx={{ borderColor: '#1e293b' }} />
 
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
-                        <Typography variant="caption" sx={{ color: '#64748b' }}>
+                        <Typography variant="caption" sx={{ color: '#94a3b8' }}>
                           🚗 <strong>ETA:</strong> {hospital.duration} ({hospital.distance})
                         </Typography>
-                        <Typography variant="caption" sx={{ color: '#64748b' }}>
+                        <Typography variant="caption" sx={{ color: '#94a3b8' }}>
                           🛏️ <strong>Beds Available:</strong> {hospital.beds}
                         </Typography>
-                        <Typography variant="caption" sx={{ color: '#64748b' }}>
+                        <Typography variant="caption" sx={{ color: '#94a3b8' }}>
                           ⏱️ <strong>ER Wait Time:</strong> {hospital.waitTime}
                         </Typography>
                       </Box>
@@ -308,8 +303,8 @@ function HospitalResults({ symptoms, onBookHospital }) {
       <Box
         sx={{
           width: '320px',
-          bgcolor: '#f8fafc',
-          borderLeft: '1px solid #e2e8f0',
+          bgcolor: '#0e111a',
+          borderLeft: '1px solid #1e293b',
           padding: 3,
           overflowY: 'auto'
         }}
